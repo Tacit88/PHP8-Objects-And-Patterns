@@ -1,136 +1,111 @@
 <?php
 
-    namespace App\Chapter3;
+namespace App\Chapter3;
 
-	class ShopProduct
-	{
-		private int|float $discount = 0;
 
-		public function __construct(
-			private string $title, 
-			private string $producerFirstName, 
-			private string $producerMainName, 
-			protected int|float $price)
-		{}
+class ShopProduct
+{
+	private int|float $discount = 0;
+	private int $id = 0;
 
-		public function getProducerFirstName(): string
-		{
-			return $this->producerFirstName;
-		}
-
-		public function getProducerMainName(): string
-		{
-			return $this->producerMainName;
-		}
-
-		public function setDiscount(int|float $num): void
-		{
-			$this->discount = $num;
-		}
-
-		public function getDiscount(): int
-		{
-			return $this->discount;
-		}
-
-		public function getTitle(): string
-		{
-			return $this->title;
-		}
-
-		public function getPrice(): int|float
-		{
-			return ($this->price - $this->discount);
-		}
-
-		public function getProducer(): string
-		{
-			return "{$this->producerFirstName} {$this->producerMainName}";
-		}
-
-		public function getSummaryLine(): string
-		{
-			$base = "{$this->title} ({$this->producerMainName}, ";
-			$base .= "{$this->producerFirstName} )";
-			return $base;
-		}
+	public function __construct(
+		private string $title,
+		private string $producerFirstName,
+		private string $producerMainName,
+		protected int|float $price
+	) {
 	}
 
-	class CdProduct extends ShopProduct
+	public function setID(int $id)
 	{
-		public function __construct(string $title, string $firstName, string $mainName, int|float $price, private int $playLength)
-		{
-			parent::__construct($title, $firstName, $mainName, $price);
-
-			$this->playLength = $playLength;
-		}
-
-		public function getPlayLength(): int
-		{
-			return $this->playLength;
-		}
-
-		public function getSummaryLine(): string
-		{
-			$base = parent::getSummaryLine();
-			$base .= "play length - $this->playLength";
-
-			return $base;
-		}
+		$this->id = $id;
 	}
 
-	class BookProduct extends ShopProduct
+	public static function getInstance(int $id, \PDO $pdo): null|ShopProduct
 	{
-		public function __construct(string $title, string $firstName, string $mainName, int|float $price, private int $numPages)
-		{
-			parent::__construct($title, $firstName, $mainName, $price);
+		$stmt = $pdo->prepare("SELECT * FROM Products WHERE id = ?");
+		$result = $stmt->execute([$id]);
 
-			$this->numPages = $numPages;
-		}
-		
-		public function getNumberOfPages(): int
-		{
-			return $this->numPages;
-		}
+		$row = $stmt->fetch();
 
-		public function getSummaryLine(): string
-		{
-			$base = parent::getSummaryLine();
-			$base .= ": page count - {$this->numPages}";
+		// var_dump($row);
 
-			return $base;
-		}
-		
-		public function getPrice (): int|float
-		{
-			return $this->price;
+		if (empty($row)) {
+			return null;
 		}
 
+		if ($row["type"] == "book") {
+			$product = new BookProduct(
+				$row["title"],
+				$row["firstname"],
+				$row["mainname"],
+				(float) $row["price"],
+				(int) $row["numpages"],
+			);
+		} elseif ($row["type"] == "cd") {
+			$product = new CdProduct(
+				$row["title"],
+				$row["firstname"],
+				$row["mainname"],
+				(float) $row["price"],
+				(int) $row["playlength"],
+			);
+		} else {
+			$firstName = (is_null($row["firstname"])) ? "" : $row["firstname"];
+
+			$product = new ShopProduct(
+				$row["title"],
+				$firstName,
+				$row["mainname"],
+				(float) $row["price"],
+			);
+		}
+
+		$product->setId((int) $row["ID"]);
+		$product->setDiscount((int) $row["discount"]);
+
+		return $product;
 	}
 
-	class ShopProductWriter
+	public function getProducerFirstName(): string
 	{
-		private $products = [];
-
-		public function addProduct(ShopProduct $shopProduct): void
-		{
-			$this->products[] = $shopProduct;
-		}
-
-		public function write(): void
-		{
-			$str = "";
-
-			foreach ($this->products as $shopProduct)
-			{
-				$str .= "{$shopProduct->getTitle()}: ";
-				$str .= "{$shopProduct->getProducer()} ";
-				$str .= "{$shopProduct->getPrice()} \n";
-			}
-
-			print $str;
-		}
+		return $this->producerFirstName;
 	}
 
+	public function getProducerMainName(): string
+	{
+		return $this->producerMainName;
+	}
 
+	public function setDiscount(int|float $num): void
+	{
+		$this->discount = $num;
+	}
 
+	public function getDiscount(): int
+	{
+		return $this->discount;
+	}
+
+	public function getTitle(): string
+	{
+		return $this->title;
+	}
+
+	public function getPrice(): int|float
+	{
+		return ($this->price - $this->discount);
+	}
+
+	public function getProducer(): string
+	{
+		return "{$this->producerFirstName} {$this->producerMainName}";
+	}
+
+	public function getSummaryLine(): string
+	{
+		$base = "{$this->title} ({$this->producerMainName}, ";
+		$base .= "{$this->producerFirstName} )";
+		return $base;
+	}
+}
