@@ -1,1 +1,1 @@
-# PHP 8 Objects & Patterns
+# PHP 8 Objects, Patterns and Practise
